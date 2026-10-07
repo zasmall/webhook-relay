@@ -2,13 +2,21 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\EndpointController;
 use App\Http\Controllers\Api\StoreEventController;
 use App\Http\Middleware\EnforcePayloadSizeLimit;
 use Illuminate\Support\Facades\Route;
 
-// Source-facing API, authenticated with Sanctum tokens issued to sources.
-Route::middleware(['auth:sanctum'])->group(function () {
+// Sources publish events with their own tokens.
+Route::middleware(['auth:sanctum', 'token.for:source'])->group(function () {
     Route::post('/events', StoreEventController::class)
         ->middleware(EnforcePayloadSizeLimit::class)
         ->name('api.events.store');
+});
+
+// Operators manage endpoints with user tokens (php artisan relay:user:token).
+Route::middleware(['auth:sanctum', 'token.for:user'])->name('api.')->group(function () {
+    Route::apiResource('endpoints', EndpointController::class);
+    Route::post('endpoints/{endpoint}/rotate-secret', [EndpointController::class, 'rotateSecret'])
+        ->name('endpoints.rotate-secret');
 });
