@@ -115,15 +115,15 @@ return [
     | Signing
     |--------------------------------------------------------------------------
     |
-    | X-Relay-Signature: t=<unix>,v1=<hex HMAC-SHA256 of "{t}.{raw_body}">.
-    | Receivers reject signatures whose timestamp is further than the tolerance
-    | from their clock, which blocks replayed requests.
+    | X-Relay-Signature: t=<unix>,v1=<hex HMAC-SHA256 of "{t}.{raw_body}">, with
+    | one v1 per active secret during a rotation. "v1" fixes the algorithm, so
+    | it isn't configurable. Receivers reject signatures whose timestamp is
+    | further than the tolerance from their clock, which blocks replays.
     |
     */
 
     'signing' => [
         'header' => 'X-Relay-Signature',
-        'algorithm' => 'sha256',
         'tolerance' => 300,
     ],
 
