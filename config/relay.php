@@ -1,0 +1,109 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ingest
+    |--------------------------------------------------------------------------
+    |
+    | Limits applied to POST /api/events before an event is stored.
+    |
+    */
+
+    'ingest' => [
+        // Maximum raw request body size, in bytes.
+        'max_payload_bytes' => (int) env('RELAY_MAX_PAYLOAD_BYTES', 256 * 1024),
+
+        // Maximum length of the Idempotency-Key header.
+        'max_idempotency_key_length' => 255,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Delivery
+    |--------------------------------------------------------------------------
+    |
+    | Outbound HTTP behaviour for DeliverWebhook. Timeouts are in seconds.
+    |
+    */
+
+    'delivery' => [
+        'connect_timeout' => (int) env('RELAY_CONNECT_TIMEOUT', 3),
+        'timeout' => (int) env('RELAY_TIMEOUT', 10),
+
+        // Receiver response bodies are truncated to this many bytes before
+        // being stored on delivery_attempts.
+        'response_body_limit' => 2048,
+
+        'user_agent' => 'WebhookRelay/1.0',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Retries
+    |--------------------------------------------------------------------------
+    |
+    | Exponential backoff with full jitter: the delay before retry n is a random
+    | value between 0 and min(cap, base * 2^(n-1)). With these defaults, 8
+    | attempts span at most ~6 hours (about half that on average).
+    |
+    */
+
+    'retry' => [
+        'max_attempts' => (int) env('RELAY_MAX_ATTEMPTS', 8),
+        'base_delay' => 180,
+        'max_delay' => 3 * 60 * 60,
+
+        // Upper bound for a receiver's Retry-After header on a 429.
+        'max_retry_after' => 60 * 60,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Circuit breaker
+    |--------------------------------------------------------------------------
+    |
+    | An endpoint is auto-disabled once this many deliveries in a row have
+    | failed. Pending deliveries wait until the endpoint is re-enabled.
+    |
+    */
+
+    'circuit_breaker' => [
+        'failure_threshold' => (int) env('RELAY_BREAKER_THRESHOLD', 20),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rate limiting
+    |--------------------------------------------------------------------------
+    |
+    | Maximum deliveries per endpoint per minute, enforced by the RateLimited
+    | job middleware.
+    |
+    */
+
+    'rate_limit' => [
+        'per_minute' => (int) env('RELAY_RATE_LIMIT_PER_MINUTE', 60),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Signing
+    |--------------------------------------------------------------------------
+    |
+    | X-Relay-Signature: t=<unix>,v1=<hex HMAC-SHA256 of "{t}.{raw_body}">.
+    | Receivers reject signatures whose timestamp is further than the tolerance
+    | from their clock, which blocks replayed requests.
+    |
+    */
+
+    'signing' => [
+        'header' => 'X-Relay-Signature',
+        'algorithm' => 'sha256',
+        'tolerance' => 300,
+    ],
+
+];
