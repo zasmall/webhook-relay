@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\DeliveryStatus;
+use App\Models\Delivery;
 use App\Models\Endpoint;
 use App\Models\User;
+use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
@@ -114,4 +117,32 @@ it('updates, toggles, rotates and deletes', function () {
     $this->delete(route('endpoints.destroy', $endpoint))
         ->assertRedirect(route('endpoints.index'));
     $this->assertSoftDeleted($endpoint);
+});
+
+it('shows the dead delivery count and replays them all', function () {
+    Queue::fake();
+    $endpoint = Endpoint::factory()->create();
+    Delivery::factory()->count(2)
+        ->status(DeliveryStatus::Dead)
+        ->create(['endpoint_id' => $endpoint->id]);
+
+    $this->actingAs($this->user)
+        ->get(route('endpoints.show', $endpoint))
+        ->assertInertia(fn (Assert $page) => $page->where('deadDeliveries', 2));
+
+    $this->post(route('endpoints.replay', $endpoint))
+        ->assertRedirect(route('endpoints.show', $endpoint))
+        ->assertInertiaFlash('toast.message', 'Replaying 2 deliveries.');
+
+    expect($endpoint->deliveries()->where('status', 'dead')->count())->toBe(0);
+});
+
+it('explains why it cannot replay for a disabled endpoint', function () {
+    $endpoint = Endpoint::factory()->disabled()->create();
+
+    $this->actingAs($this->user)
+        ->from(route('endpoints.show', $endpoint))
+        ->post(route('endpoints.replay', $endpoint))
+        ->assertRedirect(route('endpoints.show', $endpoint))
+        ->assertInertiaFlash('toast.type', 'error');
 });

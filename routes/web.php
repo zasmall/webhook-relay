@@ -15,6 +15,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('endpoints.secret');
     Route::post('endpoints/{endpoint}/rotate-secret', [EndpointController::class, 'rotateSecret'])
         ->name('endpoints.rotate-secret');
+    Route::post('endpoints/{endpoint}/replay', [EndpointController::class, 'replay'])
+        ->name('endpoints.replay');
 });
 
 require __DIR__.'/settings.php';

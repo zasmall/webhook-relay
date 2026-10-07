@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\CreateEndpoint;
+use App\Actions\ReplayDeliveries;
 use App\Actions\RotateEndpointSecret;
 use App\Actions\UpdateEndpoint;
+use App\Enums\DeliveryStatus;
 use App\Http\Requests\Endpoints\StoreEndpointRequest;
 use App\Http\Requests\Endpoints\UpdateEndpointRequest;
 use App\Http\Resources\EndpointResource;
@@ -87,11 +89,28 @@ final class EndpointController extends Controller
         return to_route('endpoints.show', $endpoint);
     }
 
+    /**
+     * Replays every dead delivery for the endpoint. Single and selected
+     * replays live in the delivery log.
+     */
+    public function replay(Endpoint $endpoint, ReplayDeliveries $replayDeliveries): RedirectResponse
+    {
+        $replayed = $replayDeliveries->handle($endpoint);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => trans_choice(
+            '{0} No dead deliveries to replay.|{1} Replaying 1 delivery.|[2,*] Replaying :count deliveries.',
+            $replayed,
+        )]);
+
+        return to_route('endpoints.show', $endpoint);
+    }
+
     private function renderShow(Request $request, Endpoint $endpoint, ?string $secret): Response
     {
         return Inertia::render('endpoints/Show', [
             'endpoint' => EndpointResource::make($endpoint)->resolve($request),
             'secret' => $secret,
+            'deadDeliveries' => $endpoint->deliveries()->where('status', DeliveryStatus::Dead)->count(),
         ]);
     }
 }

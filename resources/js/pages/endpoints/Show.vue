@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, setLayoutProps } from '@inertiajs/vue3';
-import { Check, Copy, Eye, RotateCw } from '@lucide/vue';
+import { Check, Copy, Eye, RotateCcw, RotateCw } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import EndpointController from '@/actions/App/Http/Controllers/EndpointController';
 import EndpointStatusBadge from '@/components/endpoints/EndpointStatusBadge.vue';
@@ -33,6 +33,7 @@ import type { Endpoint } from '@/types';
 const props = defineProps<{
     endpoint: Endpoint;
     secret: string | null;
+    deadDeliveries: number;
 }>();
 
 setLayoutProps({
@@ -48,6 +49,7 @@ setLayoutProps({
 const eventTypes = ref<string[]>([...props.endpoint.event_types]);
 const copied = ref(false);
 const rotateDialogOpen = ref(false);
+const replayDialogOpen = ref(false);
 
 const graceEndsAt = computed(() =>
     props.endpoint.previous_secret_expires_at
@@ -120,6 +122,78 @@ function setActive(isActive: boolean): void {
                 >
                     Enable and reset failures
                 </Button>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>Dead deliveries</CardTitle>
+                <CardDescription>
+                    <template v-if="deadDeliveries === 0">
+                        None. Deliveries that run out of attempts, or get a 410
+                        Gone, show up here.
+                    </template>
+                    <template v-else>
+                        {{ deadDeliveries }}
+                        {{ deadDeliveries === 1 ? 'delivery' : 'deliveries' }}
+                        gave up. Replaying sends them again with a fresh retry
+                        budget; their attempt history is kept.
+                    </template>
+                </CardDescription>
+            </CardHeader>
+            <CardContent v-if="deadDeliveries > 0">
+                <p
+                    v-if="!endpoint.is_active"
+                    class="text-sm text-muted-foreground"
+                >
+                    Enable the endpoint to replay its dead deliveries.
+                </p>
+                <Dialog v-else v-model:open="replayDialogOpen">
+                    <DialogTrigger as-child>
+                        <Button variant="outline" data-test="replay-all-button">
+                            <RotateCcw />
+                            Replay all
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>
+                                Replay {{ deadDeliveries }} dead
+                                {{
+                                    deadDeliveries === 1
+                                        ? 'delivery'
+                                        : 'deliveries'
+                                }}?
+                            </DialogTitle>
+                            <DialogDescription>
+                                Each is sent again, re-signed, with the same
+                                event id so receivers can deduplicate. Sends are
+                                rate limited per endpoint.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter class="gap-2">
+                            <DialogClose as-child>
+                                <Button variant="secondary">Cancel</Button>
+                            </DialogClose>
+                            <Form
+                                v-bind="
+                                    EndpointController.replay.form(endpoint.id)
+                                "
+                                :options="{ preserveScroll: true }"
+                                @success="replayDialogOpen = false"
+                                v-slot="{ processing }"
+                            >
+                                <Button
+                                    type="submit"
+                                    :disabled="processing"
+                                    data-test="confirm-replay-button"
+                                >
+                                    Replay all
+                                </Button>
+                            </Form>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </CardContent>
         </Card>
 
