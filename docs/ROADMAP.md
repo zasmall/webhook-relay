@@ -22,10 +22,10 @@
 
 ## M3 — Fan-out & delivery
 
-- [ ] `FanOutEvent` job, idempotent delivery creation, dispatched from ingest after commit
-- [ ] `DeliverWebhook` job with signing (one `v1` per active secret) and attempt logging
-- [ ] Re-check the resolved IP at delivery time (SSRF / DNS rebinding)
-- [ ] Tests with `Http::fake()`: signature correctness, 2xx path, attempt rows
+- [x] `FanOutEvent` job, idempotent delivery creation, dispatched from ingest after commit
+- [x] `DeliverWebhook` job with signing (one `v1` per active secret) and attempt logging
+- [x] Re-check the resolved IP at delivery time (SSRF / DNS rebinding)
+- [x] Tests with `Http::fake()`: signature correctness, 2xx path, attempt rows
 
 ## M4 — Reliability
 
@@ -34,6 +34,8 @@
 - [ ] Dead-lettering + `DeliveryDeadLettered` event
 - [ ] Circuit breaker + `EndpointDisabled` event
 - [ ] Per-endpoint rate limiting
+- [ ] Sweep job: reset deliveries stuck in `delivering` (worker killed mid-request) and dispatch due retries
+- [ ] Revisit `DeliverWebhook::$uniqueFor`: Laravel keeps the unique lock while a job is released, so it must cover the longest backoff
 
 ## M5 — Replay
 
