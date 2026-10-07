@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\EndpointDisabledReason;
 use App\Support\EventTypePattern;
+use Carbon\CarbonImmutable;
 use Database\Factories\EndpointFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -14,8 +15,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Carbon;
 
 /**
  * A subscriber URL that receives signed deliveries for matching event types.
@@ -25,15 +26,15 @@ use Illuminate\Support\Carbon;
  * @property string|null $description
  * @property string $secret
  * @property string|null $previous_secret
- * @property Carbon|null $previous_secret_expires_at
+ * @property CarbonImmutable|null $previous_secret_expires_at
  * @property list<string> $event_types
  * @property bool $is_active
  * @property int $consecutive_failures
- * @property Carbon|null $disabled_at
+ * @property CarbonImmutable|null $disabled_at
  * @property EndpointDisabledReason|null $disabled_reason
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
- * @property Carbon|null $deleted_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property CarbonImmutable|null $deleted_at
  */
 #[Fillable(['url', 'description', 'event_types'])]
 #[Hidden(['secret', 'previous_secret'])]
@@ -63,7 +64,7 @@ final class Endpoint extends Model
      * Secrets that should sign a delivery right now: the current secret, plus
      * the previous one while its rotation grace window is open.
      *
-     * @return list<string>
+     * @return non-empty-list<string>
      */
     public function signingSecrets(): array
     {
@@ -74,6 +75,14 @@ final class Endpoint extends Model
         }
 
         return $secrets;
+    }
+
+    /**
+     * @return HasMany<Delivery, $this>
+     */
+    public function deliveries(): HasMany
+    {
+        return $this->hasMany(Delivery::class);
     }
 
     /**
