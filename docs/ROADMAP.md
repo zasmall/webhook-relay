@@ -1,11 +1,11 @@
 # Roadmap
 
 ## M0 — Scaffold
-- [ ] Laravel + Vue starter kit (Inertia, TypeScript) + Sail (MySQL, Redis)
-- [ ] Pest, Larastan, Pint configured
-- [ ] Horizon installed with `fanout` and `deliveries` supervisors
-- [ ] GitHub Actions workflow: Pint check, PHPStan, tests
-- [ ] `config/relay.php` with all tunables
+- [x] Laravel + Vue starter kit (Inertia, TypeScript) on native MySQL and Redis
+- [x] Pest, Larastan, Pint configured
+- [x] Horizon installed with `fanout` and `deliveries` supervisors
+- [x] GitHub Actions workflow: Pint check, PHPStan, tests
+- [x] `config/relay.php` with all tunables
 
 ## M1 — Sources & ingest
 - [ ] `sources` table, Sanctum tokens, artisan command to create a source and issue a token
