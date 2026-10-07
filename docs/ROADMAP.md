@@ -29,13 +29,13 @@
 
 ## M4 — Reliability
 
-- [ ] Backoff schedule (pure function, unit tested)
-- [ ] 429 / `Retry-After`, 410 handling
-- [ ] Dead-lettering + `DeliveryDeadLettered` event
-- [ ] Circuit breaker + `EndpointDisabled` event
-- [ ] Per-endpoint rate limiting
-- [ ] Sweep job: reset deliveries stuck in `delivering` (worker killed mid-request) and dispatch due retries
-- [ ] Revisit `DeliverWebhook::$uniqueFor`: Laravel keeps the unique lock while a job is released, so it must cover the longest backoff
+- [x] Backoff schedule (pure function, unit tested)
+- [x] 429 / `Retry-After`, 410 handling
+- [x] Dead-lettering + `DeliveryDeadLettered` event
+- [x] Circuit breaker + `EndpointDisabled` event
+- [x] Per-endpoint rate limiting
+- [x] Sweep job: reset deliveries stuck in `delivering` (worker killed mid-request) and dispatch due retries
+- [x] Unique lock covers delayed retries (`ShouldBeUniqueUntilProcessing`, `$uniqueFor` from config)
 
 ## M5 — Replay
 

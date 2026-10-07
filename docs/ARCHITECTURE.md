@@ -34,22 +34,22 @@ Source apps publish events once. The relay delivers each event to every subscrib
     - Bulk insert deliveries with `insertOrIgnore`, which keeps re-runs safe.
     - Dispatch one `DeliverWebhook` per delivery of the event that is `pending` and due (`next_attempt_at` empty or past).
     - Disabled endpoints get no deliveries for events published while they're off. Replay (M5) covers recovery.
-3. **DeliverWebhook** (queue `deliveries`, `ShouldBeUnique` by delivery id, `$tries = 1`)
+3. **DeliverWebhook** (queue `deliveries`, `ShouldBeUniqueUntilProcessing` by delivery id, `RateLimited` per endpoint)
     - Skip unless the delivery is `pending`. Leave it pending if the endpoint is disabled. Mark it `dead` if the endpoint was deleted.
-    - Claim it atomically: `UPDATE … SET status = 'delivering' WHERE id = ? AND status = 'pending'`. Zero rows means another worker has it. This backs up `ShouldBeUnique`, so a delivery is never in flight twice.
+    - Claim it atomically: `UPDATE … SET status = 'delivering' WHERE id = ? AND status = 'pending'`. Zero rows means another worker has it. This backs up the unique lock, so a delivery is never in flight twice.
     - Resolve the host again and refuse non-public addresses (see SSRF below). Pin the connection to the checked IP with `CURLOPT_RESOLVE`, and never follow redirects.
     - Sign the envelope and POST it with the configured connect and request timeouts.
     - Record a `delivery_attempts` row whatever the outcome, including refused and failed connections.
     - If the job dies unexpectedly, `failed()` returns a stuck `delivering` delivery to `pending`.
-    - Handle the result as follows:
+    - Apply the retry policy (`HandleDeliveryResult`):
 
-| Result             | Action                                                   |
-| ------------------ | -------------------------------------------------------- |
-| 2xx                | `succeeded`; reset the endpoint's `consecutive_failures` |
-| 410 Gone           | `dead`; disable the endpoint                             |
-| 429                | Retry after `Retry-After` (capped), else normal backoff  |
-| Other / timeout    | Increment failures; retry with backoff                   |
-| Attempts exhausted | `dead`; fire `DeliveryDeadLettered`                      |
+| Result             | Delivery                                                     | Endpoint                                  |
+| ------------------ | ------------------------------------------------------------ | ----------------------------------------- |
+| 2xx                | `succeeded`                                                  | Reset `consecutive_failures`              |
+| 410 Gone           | `dead`; fire `DeliveryDeadLettered`                          | Disable (`gone`); fire `EndpointDisabled` |
+| 429                | Retry after `Retry-After` (capped), else backoff             | Unchanged: the receiver is up, just busy  |
+| Other / timeout    | Retry with backoff                                           | `consecutive_failures` + 1; breaker check |
+| Attempts exhausted | `dead`; fire `DeliveryDeadLettered` (429s count toward this) | —                                         |
 
 ## Request format
 
@@ -83,7 +83,25 @@ Response bodies are stored truncated to `relay.delivery.response_body_limit` byt
 
 ## Retry policy
 
-Exponential backoff with full jitter, configured in `config/relay.php`. The default is 8 attempts spanning roughly 6 hours. The job releases itself with a computed delay rather than relying on the worker's `$backoff`, so the schedule is testable as a pure function.
+Exponential backoff with full jitter (`RetrySchedule`, a pure function with an injectable randomizer). The delay before the next attempt is random in `[0, min(max_delay, base_delay × 2^(n-1))]`. The defaults are 8 attempts, a 3-minute base and a 3-hour cap, so the worst case is about 6 hours and the average about half that.
+
+**The database is the source of truth for the schedule.** After a failure, the delivery goes back to `pending` with `next_attempt_at` set, and a new `DeliverWebhook` is dispatched with that delay. That job is only the fast path. If it's lost (a Redis flush, a crash), `relay:sweep` queues the delivery once it's due. This replaced an earlier plan for the job to `release()` itself: that would keep the schedule only in Redis, and the sweep was needed anyway for stuck deliveries.
+
+**Uniqueness.** `DeliverWebhook` is `ShouldBeUniqueUntilProcessing`:
+
+- The lock on the delivery id is held while the job waits on the queue, including delayed retries and rate-limit releases.
+- The lock is released just before `handle()` runs, so the running job can dispatch its own retry.
+- `$uniqueFor` is derived from the longest possible delay, so the lock outlasts any wait.
+- The atomic claim guards the request itself.
+
+**Job attempts vs. delivery attempts.** The job has `$tries = 0` and `$maxExceptions = 1`. Rate-limit releases are unlimited and don't count. A real exception or timeout fails the job once, and `failed()` resets the delivery. Delivery attempts are counted on the row, against `relay.retry.max_attempts`.
+
+## Sweep
+
+`php artisan relay:sweep` runs every minute (`withoutOverlapping`). `composer dev` starts `schedule:work`; production needs the usual cron entry. Each run does two things:
+
+1. Resets deliveries stuck in `delivering` for longer than `relay.sweep.stale_after` to `pending`. That happens when a worker is killed mid-request. The request may have reached the receiver, so it may be sent again; delivery is at-least-once.
+2. Queues pending deliveries that are due, for active endpoints (deleted ones included, so their deliveries get marked `dead`), oldest first, up to `relay.sweep.batch_size`. Deliveries whose job is still waiting are skipped by the unique lock.
 
 ## Endpoints
 
@@ -120,11 +138,17 @@ This check at save time is not enough on its own: DNS can change after an endpoi
 
 ## Circuit breaker
 
-When `consecutive_failures` reaches the threshold, the endpoint is auto-disabled and `EndpointDisabled` fires so the owner can be notified. Pending deliveries for a disabled endpoint stay `pending` and are not attempted. Re-enabling the endpoint resumes them.
+`consecutive_failures` counts failed attempts in a row across all of an endpoint's deliveries. 429s don't count, and any 2xx resets it. When it reaches `relay.circuit_breaker.failure_threshold`, the endpoint is disabled with reason `circuit_breaker` and `EndpointDisabled` fires.
+
+Disabling is a conditional `UPDATE … WHERE is_active = true`, so when several workers cross the threshold at once, exactly one disables the endpoint and fires the event.
+
+Pending deliveries for a disabled endpoint stay `pending` and are not attempted. Re-enabling clears the breaker state, and the next sweep (within a minute) queues the backlog, throttled by the rate limiter.
+
+**Notifications.** `DeliveryDeadLettered` and `EndpointDisabled` have listeners that log a warning with ids, status and reason, never the payload. Endpoints have no owner to email; the dashboard shows endpoint health (M6).
 
 ## Rate limiting
 
-`RateLimited` job middleware, keyed per endpoint on Redis, protects receivers from bursts.
+`RateLimited('deliveries')` job middleware, keyed `endpoint:<id>` at `relay.rate_limit.per_minute`, protects receivers from bursts. The cache store is Redis. A limited job is released back onto the queue, still holding its unique lock, and the release doesn't count as an attempt.
 
 ## Replay
 
