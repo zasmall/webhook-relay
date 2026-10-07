@@ -37,10 +37,6 @@ pest()->extend(TestCase::class)
 |
 */
 
-expect()->extend('toBeOne', function () {
-    return $this->toBe(1);
-});
-
 /*
 |--------------------------------------------------------------------------
 | Functions
@@ -52,7 +48,32 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Verifies an X-Relay-Signature header the way a receiver would: any v1 that
+ * matches HMAC-SHA256("{t}.{body}") with the secret passes.
+ */
+function signatureVerifies(string $header, string $body, string $secret): bool
 {
-    // ..
+    $timestamp = null;
+    $signatures = [];
+
+    foreach (explode(',', $header) as $part) {
+        [$key, $value] = array_pad(explode('=', $part, 2), 2, '');
+
+        if ($key === 't') {
+            $timestamp = $value;
+        } elseif ($key === 'v1') {
+            $signatures[] = $value;
+        }
+    }
+
+    $expected = hash_hmac('sha256', "{$timestamp}.{$body}", $secret);
+
+    foreach ($signatures as $signature) {
+        if (hash_equals($expected, $signature)) {
+            return true;
+        }
+    }
+
+    return false;
 }

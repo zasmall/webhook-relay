@@ -17,6 +17,8 @@ it('creates exactly one event when the same key is ingested concurrently', funct
         'DB_CONNECTION' => 'mysql',
         // Parallel test runs use a per-process database, so pass the real one.
         'DB_DATABASE' => config('database.connections.mysql.database'),
+        // Ingest dispatches fan-out; keep it off the real Redis queue.
+        'QUEUE_CONNECTION' => 'sync',
     ];
 
     $results = Process::pool(function (Pool $pool) use ($processes, $source, $startAt, $env) {
