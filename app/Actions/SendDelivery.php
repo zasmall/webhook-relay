@@ -69,7 +69,8 @@ final class SendDelivery
         }
 
         $attempt = $delivery->attemptLog()->create([
-            'attempt' => $delivery->attempts + 1,
+            // Lifetime numbering: continues after a replay resets the counter.
+            'attempt' => (int) $delivery->attemptLog()->max('attempt') + 1,
             'request_headers' => $headers,
             'status_code' => $response?->status(),
             'response_body' => $response === null ? null : self::truncate($response->body()),

@@ -39,7 +39,9 @@ final class HandleDeliveryResult
         $attempt = $sent->attempt;
         $endpoint = $delivery->endpoint;
 
-        $delivery->attempts = $attempt->attempt;
+        // Attempts in the current run, which a replay resets; the attempt
+        // row's number is the lifetime sequence.
+        $delivery->attempts++;
         $delivery->last_status_code = $attempt->status_code;
 
         match (DeliveryOutcome::fromStatus($attempt->status_code)) {

@@ -21,10 +21,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $event_id
  * @property string $endpoint_id
  * @property DeliveryStatus $status
- * @property int $attempts
+ * @property int $attempts Attempts in the current run; reset by a replay
  * @property CarbonImmutable|null $next_attempt_at
  * @property int|null $last_status_code
  * @property CarbonImmutable|null $delivered_at
+ * @property int $replay_count
+ * @property CarbonImmutable|null $last_replayed_at
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Event $event
@@ -42,6 +44,7 @@ final class Delivery extends Model
     protected $attributes = [
         'status' => DeliveryStatus::Pending,
         'attempts' => 0,
+        'replay_count' => 0,
     ];
 
     /**
@@ -81,6 +84,8 @@ final class Delivery extends Model
             'next_attempt_at' => 'datetime',
             'last_status_code' => 'integer',
             'delivered_at' => 'datetime',
+            'replay_count' => 'integer',
+            'last_replayed_at' => 'datetime',
         ];
     }
 }

@@ -16,7 +16,7 @@ use LogicException;
  *
  * @property int $id
  * @property string $delivery_id
- * @property int $attempt
+ * @property int $attempt Lifetime sequence for the delivery; continues across replays
  * @property array<string, string> $request_headers
  * @property int|null $status_code
  * @property string|null $response_body
