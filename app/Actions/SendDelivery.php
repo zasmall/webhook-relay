@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions;
 
+use App\Data\SentAttempt;
 use App\Enums\DeliveryStatus;
 use App\Exceptions\UnsafeDestination;
 use App\Models\Delivery;
-use App\Models\DeliveryAttempt;
 use App\Models\Endpoint;
 use App\Models\Event;
 use App\Support\OutboundAddressGuard;
@@ -24,14 +24,14 @@ final class SendDelivery
     ) {}
 
     /**
-     * Makes one attempt to deliver. Returns the recorded attempt, or null if
-     * there was nothing to send (not pending, endpoint disabled or deleted,
-     * or another worker claimed it first).
+     * Makes one attempt to deliver and logs it. Returns null if there was
+     * nothing to send (not pending, endpoint disabled or deleted, or another
+     * worker claimed it first).
      *
-     * Failed attempts leave the delivery pending; scheduling retries is the
-     * caller's job.
+     * The delivery is left "delivering"; HandleDeliveryResult decides what
+     * happens next.
      */
-    public function handle(Delivery $delivery): ?DeliveryAttempt
+    public function handle(Delivery $delivery): ?SentAttempt
     {
         $delivery->loadMissing(['event', 'endpoint']);
         $endpoint = $delivery->endpoint;
@@ -77,9 +77,7 @@ final class SendDelivery
             'duration_ms' => intdiv(hrtime(true) - $started, 1_000_000),
         ]);
 
-        $this->recordOutcome($delivery, $endpoint, $attempt);
-
-        return $attempt;
+        return new SentAttempt($attempt, $response?->header('Retry-After'));
     }
 
     /**
@@ -150,27 +148,6 @@ final class SendDelivery
             ->withoutRedirecting()
             ->when($pinned !== [], fn ($request) => $request->withOptions(['curl' => [CURLOPT_RESOLVE => $pinned]]))
             ->post($url);
-    }
-
-    private function recordOutcome(Delivery $delivery, Endpoint $endpoint, DeliveryAttempt $attempt): void
-    {
-        $delivery->attempts = $attempt->attempt;
-        $delivery->last_status_code = $attempt->status_code;
-
-        if ($attempt->succeeded()) {
-            $delivery->status = DeliveryStatus::Succeeded;
-            $delivery->delivered_at = now();
-            $delivery->save();
-
-            Endpoint::whereKey($endpoint->id)->where('consecutive_failures', '>', 0)->update(['consecutive_failures' => 0]);
-
-            return;
-        }
-
-        $delivery->status = DeliveryStatus::Pending;
-        $delivery->save();
-
-        Endpoint::whereKey($endpoint->id)->increment('consecutive_failures');
     }
 
     /**

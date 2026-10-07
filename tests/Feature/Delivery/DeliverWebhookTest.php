@@ -11,12 +11,15 @@ use App\Models\Delivery;
 use App\Models\DeliveryAttempt;
 use App\Models\Endpoint;
 use App\Models\Event;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     Http::preventStrayRequests();
+    // Retries are dispatched as delayed jobs; capture them instead of running.
+    Queue::fake();
 
     $this->endpoint = Endpoint::factory()->create(['url' => 'https://hooks.example.com/relay']);
     $this->event = Event::factory()->create([
@@ -29,9 +32,13 @@ beforeEach(function () {
     ]);
 });
 
+/**
+ * Runs the job's handler directly (the queue is faked, so retries it
+ * schedules are captured rather than run).
+ */
 function deliver(Delivery $delivery): void
 {
-    DeliverWebhook::dispatchSync($delivery->id);
+    app()->call([new DeliverWebhook($delivery), 'handle']);
 }
 
 it('posts a signed envelope to the endpoint', function () {
@@ -110,7 +117,7 @@ it('marks a 2xx as succeeded and records the attempt', function () {
         ->and(json_encode($attempt->request_headers))->not->toContain('inv_1');
 });
 
-it('leaves a failed delivery pending and counts the failure', function (Closure $response, ?int $status, ?string $error) {
+it('schedules a retry for a failed attempt and counts the failure', function (Closure $response, ?int $status, ?string $error) {
     Http::fake(['*' => $response()]);
 
     deliver($this->delivery);
@@ -120,6 +127,7 @@ it('leaves a failed delivery pending and counts the failure', function (Closure 
         ->attempts->toBe(1)
         ->last_status_code->toBe($status)
         ->delivered_at->toBeNull()
+        ->next_attempt_at->not->toBeNull()
         ->and($this->endpoint->fresh()->consecutive_failures)->toBe(1)
         ->and(DeliveryAttempt::sole()->status_code)->toBe($status);
 
@@ -224,17 +232,19 @@ it('does not send when another worker already claimed the delivery', function ()
 it('puts a delivery stuck in delivering back to pending when the job fails', function () {
     $this->delivery->update(['status' => DeliveryStatus::Delivering]);
 
-    (new DeliverWebhook($this->delivery->id))->failed(new RuntimeException('worker died'));
+    (new DeliverWebhook($this->delivery))->failed(new RuntimeException('worker died'));
 
     expect($this->delivery->fresh()->status)->toBe(DeliveryStatus::Pending);
 });
 
-it('is unique per delivery on the deliveries queue', function () {
-    $job = new DeliverWebhook($this->delivery->id);
+it('is unique per delivery until it starts processing', function () {
+    $job = new DeliverWebhook($this->delivery);
 
-    expect($job)->toBeInstanceOf(ShouldBeUnique::class)
+    expect($job)->toBeInstanceOf(ShouldBeUniqueUntilProcessing::class)
         ->and($job->uniqueId())->toBe($this->delivery->id)
-        ->and($job->queue)->toBe('deliveries');
+        ->and($job->queue)->toBe('deliveries')
+        // The lock must outlast the longest delayed retry.
+        ->and($job->uniqueFor)->toBeGreaterThan(config('relay.retry.max_delay'));
 });
 
 it('keeps the attempt log append-only', function () {

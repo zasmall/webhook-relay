@@ -84,6 +84,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Sweep
+    |--------------------------------------------------------------------------
+    |
+    | relay:sweep runs every minute. It resets deliveries stuck in
+    | "delivering" (a worker died mid-request) and queues pending deliveries
+    | that are due, in case their job was lost.
+    |
+    */
+
+    'sweep' => [
+        // Seconds in "delivering" before a delivery is considered stuck. Must
+        // exceed the job timeout (connect + request timeout + 5).
+        'stale_after' => 120,
+
+        // Most deliveries queued per run, so a big backlog drains gradually.
+        'batch_size' => 1000,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Circuit breaker
     |--------------------------------------------------------------------------
     |

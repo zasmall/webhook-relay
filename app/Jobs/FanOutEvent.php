@@ -29,7 +29,7 @@ final class FanOutEvent implements ShouldQueue
     public function handle(CreateDeliveries $createDeliveries): void
     {
         foreach ($createDeliveries->handle($this->event) as $delivery) {
-            DeliverWebhook::dispatch($delivery->id);
+            DeliverWebhook::dispatch($delivery);
         }
     }
 }
