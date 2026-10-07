@@ -16,13 +16,15 @@
 
 ## M2 — Endpoints
 
-- [ ] Endpoint CRUD (API + dashboard), generated secrets, secret rotation
-- [ ] Event type matching (exact and `*`)
+- [x] Endpoint CRUD (API + dashboard), generated secrets, secret rotation with a 24h grace window
+- [x] Event type matching (exact, `prefix.*`, and `*`)
+- [x] SSRF checks on endpoint URLs; operator API tokens kept separate from source tokens
 
 ## M3 — Fan-out & delivery
 
 - [ ] `FanOutEvent` job, idempotent delivery creation, dispatched from ingest after commit
-- [ ] `DeliverWebhook` job with signing and attempt logging
+- [ ] `DeliverWebhook` job with signing (one `v1` per active secret) and attempt logging
+- [ ] Re-check the resolved IP at delivery time (SSRF / DNS rebinding)
 - [ ] Tests with `Http::fake()`: signature correctness, 2xx path, attempt rows
 
 ## M4 — Reliability
