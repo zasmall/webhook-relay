@@ -8,16 +8,16 @@
 - [x] `config/relay.php` with all tunables
 
 ## M1 — Sources & ingest
-- [ ] `sources` table, Sanctum tokens, artisan command to create a source and issue a token
-- [ ] `POST /api/events` with required `Idempotency-Key`
-- [ ] Tests: auth, validation, payload size limit, duplicate key returns original, concurrent duplicate race
+- [x] `sources` table, Sanctum tokens, artisan command to create a source and issue a token
+- [x] `POST /api/events` with required `Idempotency-Key`
+- [x] Tests: auth, validation, payload size limit, duplicate key returns original, concurrent duplicate race
 
 ## M2 — Endpoints
 - [ ] Endpoint CRUD (API + dashboard), generated secrets, secret rotation
 - [ ] Event type matching (exact and `*`)
 
 ## M3 — Fan-out & delivery
-- [ ] `FanOutEvent` job, idempotent delivery creation
+- [ ] `FanOutEvent` job, idempotent delivery creation, dispatched from ingest after commit
 - [ ] `DeliverWebhook` job with signing and attempt logging
 - [ ] Tests with `Http::fake()`: signature correctness, 2xx path, attempt rows
 
