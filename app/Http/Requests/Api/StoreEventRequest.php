@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api;
 
 use App\Models\Source;
+use App\Support\EventTypePattern;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -20,8 +21,7 @@ final class StoreEventRequest extends FormRequest
     {
         return [
             'idempotency_key' => ['required', 'string', 'max:'.config()->integer('relay.ingest.max_idempotency_key_length')],
-            // Dot-separated lowercase segments, e.g. "invoice.paid".
-            'type' => ['required', 'string', 'max:255', 'regex:/^[a-z0-9_]+(\.[a-z0-9_]+)*$/'],
+            'type' => ['required', 'string', 'max:255', 'regex:'.EventTypePattern::TYPE_REGEX],
             'payload' => [
                 'required',
                 function (string $attribute, mixed $value, Closure $fail): void {

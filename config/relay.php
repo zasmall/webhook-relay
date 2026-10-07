@@ -23,6 +23,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Endpoints
+    |--------------------------------------------------------------------------
+    |
+    | Subscriber URL rules and secret rotation. The URL checks guard against
+    | SSRF; relax them locally so a receiver on localhost can be used.
+    |
+    */
+
+    'endpoints' => [
+        'require_https' => (bool) env('RELAY_REQUIRE_HTTPS', true),
+        'allow_private_networks' => (bool) env('RELAY_ALLOW_PRIVATE_NETWORKS', false),
+
+        'max_event_types' => 50,
+
+        // After a rotation, the previous secret keeps signing deliveries
+        // (alongside the new one) for this many seconds.
+        'secret_rotation_grace' => 24 * 60 * 60,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Delivery
     |--------------------------------------------------------------------------
     |
