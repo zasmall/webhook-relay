@@ -19,9 +19,15 @@ Source apps publish events once. The relay delivers each event to every subscrib
 ## Flow
 
 1. **Ingest:** `POST /api/events` (Sanctum, `Idempotency-Key` header required)
-   - Validate the type, the payload, and the size limit.
-   - Insert the event. On a unique-index violation, load the existing event and return 200 with it. Otherwise return 202.
+   - Reject bodies over `relay.ingest.max_payload_bytes` with 413, measured on the raw body before parsing.
+   - Validate with 422: the key (max 255 chars), the `type` (dot-separated lowercase segments such as `invoice.paid`), and the `payload` (a non-empty JSON object).
+   - Insert the event without checking first. On a unique-index violation, load the existing event and return 200 with it. Otherwise return 202.
+   - A duplicate key returns the original event even if the retry's type or payload differ. Comparing bodies (Stripe-style 422 on mismatch) was considered and rejected as unnecessary complexity for retries that are almost always identical.
    - Dispatch `FanOutEvent` after commit.
+
+   Sources are created with `php artisan relay:source:create {name}`, which prints the source's token once.
+
+   The payload is decoded as objects, not PHP arrays, so `{}` is stored and delivered as `{}` rather than `[]`. MySQL's JSON column does not preserve object key order; receivers must not depend on it.
 2. **FanOutEvent** (queue `fanout`)
    - Select active endpoints whose `event_types` match.
    - Bulk insert deliveries with `insertOrIgnore`, which keeps re-runs safe.
