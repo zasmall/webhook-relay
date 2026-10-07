@@ -39,13 +39,14 @@
 
 ## M5 — Replay
 
-- [ ] Replay single, selected, and all-dead deliveries for an endpoint
+- [x] Replay single, selected, and all-dead deliveries for an endpoint (API; dashboard "replay all" on the endpoint page)
+- [x] Delivery list and detail API (`GET /api/endpoints/{id}/deliveries`, `GET /api/deliveries/{id}`)
 
 ## M6 — Dashboard
 
 - [ ] Endpoint list with health indicators
 - [ ] Delivery log with filters (status, endpoint, event type, date)
-- [ ] Attempt detail view, replay buttons
+- [ ] Attempt detail view, replay buttons (single and selected, via the M5 API/action)
 
 ## M7 — Receiver verification
 

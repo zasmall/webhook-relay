@@ -6,13 +6,13 @@ Source apps publish events once. The relay delivers each event to every subscrib
 
 ## Data model
 
-| Table               | Key columns                                                                                                                                                                                             | Notes                                                                                                           |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `sources`           | id (ULID), name                                                                                                                                                                                         | Apps allowed to publish; each authenticates with a Sanctum token                                                |
-| `endpoints`         | id (ULID), url, description, secret (encrypted), previous_secret (encrypted), previous_secret_expires_at, event_types (json), is_active, consecutive_failures, disabled_at, disabled_reason, deleted_at | Subscriber URLs. `event_types` holds patterns (see below). Soft-deleted so delivery history keeps its endpoint  |
-| `events`            | id (ULID), source_id, type, payload (json), idempotency_key, received_at                                                                                                                                | Unique index on `(source_id, idempotency_key)`                                                                  |
-| `deliveries`        | id (ULID), event_id, endpoint_id, status, attempts, next_attempt_at, last_status_code, delivered_at                                                                                                     | One row per event × endpoint. Unique on `(event_id, endpoint_id)`                                               |
-| `delivery_attempts` | id, delivery_id, attempt, request_headers (json), status_code, response_body (truncated), error, duration_ms, created_at                                                                                | Append-only: the model throws on update or delete. Unique on `(delivery_id, attempt)`. Never stores the payload |
+| Table               | Key columns                                                                                                                                                                                             | Notes                                                                                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sources`           | id (ULID), name                                                                                                                                                                                         | Apps allowed to publish; each authenticates with a Sanctum token                                                                                                                |
+| `endpoints`         | id (ULID), url, description, secret (encrypted), previous_secret (encrypted), previous_secret_expires_at, event_types (json), is_active, consecutive_failures, disabled_at, disabled_reason, deleted_at | Subscriber URLs. `event_types` holds patterns (see below). Soft-deleted so delivery history keeps its endpoint                                                                  |
+| `events`            | id (ULID), source_id, type, payload (json), idempotency_key, received_at                                                                                                                                | Unique index on `(source_id, idempotency_key)`                                                                                                                                  |
+| `deliveries`        | id (ULID), event_id, endpoint_id, status, attempts, next_attempt_at, last_status_code, delivered_at, replay_count, last_replayed_at                                                                     | One row per event × endpoint. Unique on `(event_id, endpoint_id)`. `attempts` counts the current run and is reset by a replay                                                   |
+| `delivery_attempts` | id, delivery_id, attempt, request_headers (json), status_code, response_body (truncated), error, duration_ms, created_at                                                                                | Append-only: the model throws on update or delete. `attempt` is a lifetime sequence that continues across replays; unique on `(delivery_id, attempt)`. Never stores the payload |
 
 `DeliveryStatus` enum: `pending`, `delivering`, `succeeded`, `dead`.
 
@@ -152,7 +152,22 @@ Pending deliveries for a disabled endpoint stay `pending` and are not attempted.
 
 ## Replay
 
-Operators can redeliver selected or all `dead` deliveries for an endpoint, from the API and the dashboard. A replay resets `attempts` and keeps the attempt history.
+Operators can redeliver `dead` deliveries for an endpoint: one, a selection, or all of them (`ReplayDeliveries`).
+
+- **What a replay does.** A conditional bulk update, `WHERE endpoint_id = ? AND status = 'dead' [AND id IN …]`, sets the deliveries back to `pending` with `attempts = 0`, clears `next_attempt_at`, and bumps `replay_count` and `last_replayed_at`. A `DeliverWebhook` is then queued for each.
+- **What it leaves alone.** Only dead deliveries change, so ids that aren't dead (or belong to another endpoint) are ignored, and replaying twice is harmless. Succeeded deliveries are deliberately not replayable, which keeps a mistaken "replay all" from re-sending successful webhooks.
+- **Retry budget vs. history.** `deliveries.attempts` counts the current run and is what `max_attempts` and the backoff use, so a replay gets a fresh budget. `delivery_attempts.attempt` is a lifetime sequence (highest existing number + 1), so history is kept and numbering continues: …8, then 9.
+- **Disabled or deleted endpoints** are refused with 409 (`ReplayNotAllowed`). Otherwise the operator would see success while nothing is sent.
+- **What the receiver sees.** Replays are re-signed with a fresh timestamp but keep the event id, so receivers that dedupe on it still can. Sends are rate limited per endpoint, so "replay all" can't flood a receiver, and if dispatch fails, `relay:sweep` picks the deliveries up.
+
+API (operator tokens):
+
+- `GET /api/endpoints/{endpoint}/deliveries?status=dead`: cursor-paginated, newest first.
+- `GET /api/deliveries/{delivery}`: the delivery with its attempt log.
+- `POST /api/deliveries/{delivery}/replay`: a single delivery.
+- `POST /api/endpoints/{endpoint}/replay` with `{"delivery_ids": [...]}` (max 500) or `{"all": true}`, never both. Returns `{"replayed": n}`.
+
+Dashboard: the endpoint page shows the dead count with a **Replay all** button. Single and selected replays live in the delivery log (M6).
 
 ## Receiver verification
 
