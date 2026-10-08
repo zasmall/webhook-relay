@@ -23,6 +23,12 @@ final class DeliveryResource extends JsonResource
             'event_id' => $this->event_id,
             'endpoint_id' => $this->endpoint_id,
             'event_type' => $this->whenLoaded('event', fn () => $this->event->type),
+            'endpoint' => $this->whenLoaded('endpoint', fn () => [
+                'id' => $this->endpoint->id,
+                'url' => $this->endpoint->url,
+                'description' => $this->endpoint->description,
+                'deleted' => $this->endpoint->trashed(),
+            ]),
             'status' => $this->status->value,
             'attempts' => $this->attempts,
             'next_attempt_at' => $this->next_attempt_at?->toIso8601ZuluString(),
@@ -31,7 +37,12 @@ final class DeliveryResource extends JsonResource
             'replay_count' => $this->replay_count,
             'last_replayed_at' => $this->last_replayed_at?->toIso8601ZuluString(),
             'created_at' => $this->created_at?->toIso8601ZuluString(),
-            'attempt_log' => DeliveryAttemptResource::collection($this->whenLoaded('attemptLog')),
+            // Resolved to a plain list: a nested resource collection would be
+            // wrapped in {"data": ...} when Inertia serializes the props.
+            'attempt_log' => $this->whenLoaded(
+                'attemptLog',
+                fn () => DeliveryAttemptResource::collection($this->attemptLog)->resolve($request),
+            ),
         ];
     }
 }

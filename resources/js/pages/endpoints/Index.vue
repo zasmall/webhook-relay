@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePoll } from '@inertiajs/vue3';
 import { Plus } from '@lucide/vue';
 import EndpointController from '@/actions/App/Http/Controllers/EndpointController';
-import EndpointStatusBadge from '@/components/endpoints/EndpointStatusBadge.vue';
+import HealthBadge from '@/components/endpoints/HealthBadge.vue';
 import Heading from '@/components/Heading.vue';
 import { Badge } from '@/components/ui/badge';
+import RelativeTime from '@/components/RelativeTime.vue';
 import { Button } from '@/components/ui/button';
+import { percent } from '@/lib/format';
 import type { Endpoint } from '@/types';
 
 defineProps<{ endpoints: Endpoint[] }>();
+
+usePoll(5000, { only: ['endpoints'] });
 
 defineOptions({
     layout: {
@@ -49,10 +53,15 @@ defineOptions({
                     <tr>
                         <th class="px-4 py-3 font-medium">URL</th>
                         <th class="px-4 py-3 font-medium">Event types</th>
-                        <th class="px-4 py-3 font-medium">Status</th>
+                        <th class="px-4 py-3 font-medium">Health</th>
                         <th class="px-4 py-3 text-right font-medium">
-                            Failures in a row
+                            Success (24h)
                         </th>
+                        <th class="px-4 py-3 text-right font-medium">
+                            Pending
+                        </th>
+                        <th class="px-4 py-3 text-right font-medium">Dead</th>
+                        <th class="px-4 py-3 font-medium">Last attempt</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -88,10 +97,31 @@ defineOptions({
                             </div>
                         </td>
                         <td class="px-4 py-3">
-                            <EndpointStatusBadge :endpoint="endpoint" />
+                            <HealthBadge
+                                v-if="endpoint.health"
+                                :health="endpoint.health"
+                            />
+                            <p
+                                v-if="endpoint.consecutive_failures > 0"
+                                class="text-xs text-muted-foreground"
+                            >
+                                {{ endpoint.consecutive_failures }} failures in
+                                a row
+                            </p>
                         </td>
                         <td class="px-4 py-3 text-right tabular-nums">
-                            {{ endpoint.consecutive_failures }}
+                            {{ percent(endpoint.stats?.success_rate ?? null) }}
+                        </td>
+                        <td class="px-4 py-3 text-right tabular-nums">
+                            {{ endpoint.stats?.pending ?? 0 }}
+                        </td>
+                        <td class="px-4 py-3 text-right tabular-nums">
+                            {{ endpoint.stats?.dead ?? 0 }}
+                        </td>
+                        <td class="px-4 py-3">
+                            <RelativeTime
+                                :value="endpoint.stats?.last_attempt_at ?? null"
+                            />
                         </td>
                     </tr>
                 </tbody>

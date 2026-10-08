@@ -1,12 +1,22 @@
 <script setup lang="ts">
-import { Form, Head, Link, router, setLayoutProps } from '@inertiajs/vue3';
+import {
+    Form,
+    Head,
+    Link,
+    router,
+    setLayoutProps,
+    usePoll,
+} from '@inertiajs/vue3';
 import { Check, Copy, Eye, RotateCcw, RotateCw } from '@lucide/vue';
 import { computed, ref } from 'vue';
+import DeliveryController from '@/actions/App/Http/Controllers/DeliveryController';
 import EndpointController from '@/actions/App/Http/Controllers/EndpointController';
 import EndpointStatusBadge from '@/components/endpoints/EndpointStatusBadge.vue';
 import EventTypesInput from '@/components/endpoints/EventTypesInput.vue';
+import HealthBadge from '@/components/endpoints/HealthBadge.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import RelativeTime from '@/components/RelativeTime.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -27,6 +37,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { percent } from '@/lib/format';
 import { arrayFieldError } from '@/lib/validation';
 import type { Endpoint } from '@/types';
 
@@ -45,6 +56,8 @@ setLayoutProps({
         },
     ],
 });
+
+usePoll(5000, { only: ['endpoint', 'deadDeliveries'] });
 
 const eventTypes = ref<string[]>([...props.endpoint.event_types]);
 const copied = ref(false);
@@ -106,22 +119,75 @@ function setActive(isActive: boolean): void {
                     endpoint is enabled again.
                 </CardDescription>
             </CardHeader>
-            <CardContent>
-                <Button
-                    v-if="endpoint.is_active"
-                    variant="outline"
-                    data-test="disable-endpoint-button"
-                    @click="setActive(false)"
+            <CardContent class="space-y-4">
+                <dl
+                    v-if="endpoint.stats"
+                    class="grid grid-cols-2 gap-4 text-sm sm:grid-cols-5"
                 >
-                    Disable
-                </Button>
-                <Button
-                    v-else
-                    data-test="enable-endpoint-button"
-                    @click="setActive(true)"
-                >
-                    Enable and reset failures
-                </Button>
+                    <div>
+                        <dt class="text-muted-foreground">Health</dt>
+                        <dd>
+                            <HealthBadge
+                                v-if="endpoint.health"
+                                :health="endpoint.health"
+                            />
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-muted-foreground">Success (24h)</dt>
+                        <dd class="tabular-nums">
+                            {{ percent(endpoint.stats.success_rate) }}
+                            <span class="text-muted-foreground"
+                                >of {{ endpoint.stats.recent_attempts }}</span
+                            >
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-muted-foreground">Pending</dt>
+                        <dd class="tabular-nums">
+                            {{ endpoint.stats.pending }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-muted-foreground">Dead</dt>
+                        <dd class="tabular-nums">{{ endpoint.stats.dead }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-muted-foreground">Last attempt</dt>
+                        <dd>
+                            <RelativeTime
+                                :value="endpoint.stats.last_attempt_at"
+                            />
+                        </dd>
+                    </div>
+                </dl>
+                <div class="flex flex-wrap gap-2">
+                    <Button variant="outline" as-child>
+                        <Link
+                            :href="
+                                DeliveryController.index({
+                                    query: { endpoint: endpoint.id },
+                                })
+                            "
+                            >View deliveries</Link
+                        >
+                    </Button>
+                    <Button
+                        v-if="endpoint.is_active"
+                        variant="outline"
+                        data-test="disable-endpoint-button"
+                        @click="setActive(false)"
+                    >
+                        Disable
+                    </Button>
+                    <Button
+                        v-else
+                        data-test="enable-endpoint-button"
+                        @click="setActive(true)"
+                    >
+                        Enable and reset failures
+                    </Button>
+                </div>
             </CardContent>
         </Card>
 

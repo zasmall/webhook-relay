@@ -8,11 +8,11 @@ use App\Actions\CreateEndpoint;
 use App\Actions\ReplayDeliveries;
 use App\Actions\RotateEndpointSecret;
 use App\Actions\UpdateEndpoint;
-use App\Enums\DeliveryStatus;
 use App\Http\Requests\Endpoints\StoreEndpointRequest;
 use App\Http\Requests\Endpoints\UpdateEndpointRequest;
 use App\Http\Resources\EndpointResource;
 use App\Models\Endpoint;
+use App\Queries\EndpointStatsQuery;
 use Carbon\CarbonInterval;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,10 +21,19 @@ use Inertia\Response;
 
 final class EndpointController extends Controller
 {
+    public function __construct(
+        private readonly EndpointStatsQuery $statsQuery,
+    ) {}
+
     public function index(Request $request): Response
     {
+        $endpoints = Endpoint::latest()->latest('id')->get();
+        $stats = $this->statsQuery->forEndpoints(array_values($endpoints->modelKeys()));
+
         return Inertia::render('endpoints/Index', [
-            'endpoints' => EndpointResource::collection(Endpoint::latest()->latest('id')->get())->resolve($request),
+            'endpoints' => $endpoints->map(
+                fn (Endpoint $endpoint) => EndpointResource::make($endpoint)->withStats($stats[$endpoint->id])->resolve($request),
+            ),
         ]);
     }
 
@@ -107,10 +116,12 @@ final class EndpointController extends Controller
 
     private function renderShow(Request $request, Endpoint $endpoint, ?string $secret): Response
     {
+        $stats = $this->statsQuery->forEndpoints([$endpoint->id])[$endpoint->id];
+
         return Inertia::render('endpoints/Show', [
-            'endpoint' => EndpointResource::make($endpoint)->resolve($request),
+            'endpoint' => EndpointResource::make($endpoint)->withStats($stats)->resolve($request),
             'secret' => $secret,
-            'deadDeliveries' => $endpoint->deliveries()->where('status', DeliveryStatus::Dead)->count(),
+            'deadDeliveries' => $stats->dead,
         ]);
     }
 }

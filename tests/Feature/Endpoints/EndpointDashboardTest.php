@@ -146,3 +146,20 @@ it('explains why it cannot replay for a disabled endpoint', function () {
         ->assertRedirect(route('endpoints.show', $endpoint))
         ->assertInertiaFlash('toast.type', 'error');
 });
+
+it('shows health and stats on the endpoint list and page', function () {
+    $endpoint = Endpoint::factory()->create();
+    Delivery::factory()->count(2)->create(['endpoint_id' => $endpoint->id]);
+
+    $this->actingAs($this->user)
+        ->get(route('endpoints.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('endpoints.0.health', 'idle')
+            ->where('endpoints.0.stats.pending', 2)
+            ->where('endpoints.0.stats.success_rate', null));
+
+    $this->get(route('endpoints.show', $endpoint))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('endpoint.health', 'idle')
+            ->where('endpoint.stats.pending', 2));
+});

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, FolderGit2, LayoutGrid, Webhook } from '@lucide/vue';
+import { BookOpen, FolderGit2, LayoutGrid, Send, Webhook } from '@lucide/vue';
+import DeliveryController from '@/actions/App/Http/Controllers/DeliveryController';
 import EndpointController from '@/actions/App/Http/Controllers/EndpointController';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
@@ -28,6 +29,11 @@ const mainNavItems: NavItem[] = [
         title: 'Endpoints',
         href: EndpointController.index(),
         icon: Webhook,
+    },
+    {
+        title: 'Deliveries',
+        href: DeliveryController.index(),
+        icon: Send,
     },
 ];
 
