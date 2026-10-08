@@ -60,5 +60,5 @@
 - [x] README: problem, architecture diagram, key decisions and tradeoffs, how to run, "what I'd do next"
 - [x] Demo seeder plus a flaky mock receiver to show retries live
 - [x] Re-check delivery log and stats query plans (`EXPLAIN`) against seeded volume
-- [x] Screenshots of the dashboard (GIF left for later)
+- [x] Screenshots of the dashboard
 - [x] Landing page replacing the starter-kit welcome page; public registration disabled

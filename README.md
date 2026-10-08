@@ -1,5 +1,7 @@
 # Webhook Relay
 
+[![ci](https://github.com/zasmall/webhook-relay/actions/workflows/ci.yml/badge.svg)](https://github.com/zasmall/webhook-relay/actions/workflows/ci.yml)
+
 An API-first Laravel service that accepts events from source apps and reliably delivers them to subscriber endpoints. Sources publish once. The relay signs each delivery, retries with backoff, survives receiver outages, and gives operators visibility and one-click replay.
 
 ![Overview: 24-hour counts and the endpoints that need attention](docs/screenshots/overview.png)
@@ -55,6 +57,7 @@ Each of these is explained in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 Requires PHP 8.4, Composer, Node 22+, MySQL 8+ and Redis. There's no Docker: the app runs against local MySQL and Redis services (for example from Homebrew).
 
 ```bash
+git clone https://github.com/zasmall/webhook-relay.git && cd webhook-relay
 composer install && npm install
 cp .env.example .env && php artisan key:generate
 mysql -uroot -e "CREATE DATABASE webhook_relay_service; CREATE DATABASE webhook_relay_service_test;"
@@ -120,7 +123,7 @@ composer ci:check     # frontend lint/format, vue-tsc, Pint, PHPStan (level 7), 
 cd packages/webhook-relay-signature && composer install && vendor/bin/pest
 ```
 
-The suite is about 290 tests against real MySQL; the package has its own 39. Some notable ones:
+The suite is 286 tests against real MySQL, run in GitHub Actions on every push; the package has its own 39. Some notable ones:
 
 - A concurrency test races 8 PHP processes on the same idempotency key. It's verified to fail against a check-then-insert implementation.
 - A test runs the mock receiver as a real `php -S` process.
@@ -149,7 +152,11 @@ docs/ARCHITECTURE.md       Design, data model, decisions, query plans
 
 ## What I'd do next
 
-- **Retention.** Archive or prune old succeeded and dead deliveries and their attempts. Dead rows are never pruned today, and the backlog and dead-in-24h queries grow with them.
+- **Retention.** Nothing is pruned today, so events, deliveries and the attempt log grow forever, and the dead-delivery counts (endpoint backlog, dead in 24h) get slower as dead rows pile up. The plan is a scheduled `relay:prune`:
+    - Delete succeeded deliveries, with their attempts and any event left without deliveries, after a configurable window (for example 30 days).
+    - Keep dead deliveries longer (for example 90 days), so they can still be replayed.
+    - Delete in small primary-key chunks, so it never holds long locks.
+    - Optionally archive to object storage before deleting, if the audit trail must outlive the database.
 - **An egress proxy** (such as Smokescreen) for SSRF defense in depth, and so receivers can allowlist the relay's IPs.
 - **Tenancy.** Endpoints owned by teams, and per-source subscriptions instead of one global endpoint list.
 - **Token management in the dashboard**, instead of artisan commands only.
