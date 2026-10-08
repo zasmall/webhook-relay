@@ -118,6 +118,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Health
+    |--------------------------------------------------------------------------
+    |
+    | Dashboard health labels, computed from the endpoint's attempts in the
+    | window and its consecutive failures. "Failing" also applies once
+    | consecutive failures reach half the circuit breaker threshold.
+    |
+    */
+
+    'health' => [
+        'window_hours' => 24,
+        'degraded_below' => 0.95,
+        'failing_below' => 0.5,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Rate limiting
     |--------------------------------------------------------------------------
     |
