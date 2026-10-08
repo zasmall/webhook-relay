@@ -162,3 +162,7 @@ docs/ARCHITECTURE.md       Design, data model, decisions, query plans
 - **Token management in the dashboard**, instead of artisan commands only.
 - **An OpenAPI spec** for the API, and metrics export (delivery latency and success rate per endpoint) for Prometheus or OpenTelemetry.
 - **Opt-in ordered delivery per endpoint**, for receivers that need it, accepting head-of-line blocking.
+
+## License
+
+MIT. See [LICENSE](LICENSE). The [signature package](packages/webhook-relay-signature) is also MIT.

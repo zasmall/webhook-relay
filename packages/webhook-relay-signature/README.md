@@ -76,3 +76,7 @@ try {
 composer install
 vendor/bin/pest
 ```
+
+## License
+
+MIT. See [LICENSE](LICENSE).
