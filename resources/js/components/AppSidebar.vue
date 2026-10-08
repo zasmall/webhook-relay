@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, FolderGit2, LayoutGrid, Send, Webhook } from '@lucide/vue';
+import { Activity, LayoutGrid, Send, Webhook } from '@lucide/vue';
 import DeliveryController from '@/actions/App/Http/Controllers/DeliveryController';
 import EndpointController from '@/actions/App/Http/Controllers/EndpointController';
 import AppLogo from '@/components/AppLogo.vue';
@@ -39,14 +39,9 @@ const mainNavItems: NavItem[] = [
 
 const footerNavItems: NavItem[] = [
     {
-        title: 'Repository',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
+        title: 'Queue dashboard',
+        href: '/horizon',
+        icon: Activity,
     },
 ];
 </script>
