@@ -171,13 +171,33 @@ Dashboard: the endpoint page shows the dead count with a **Replay all** button. 
 
 ## Receiver verification
 
-A small package/middleware (`VerifyRelaySignature`) does the following:
+The signing scheme lives in one place: the `zasmall/relay-signature` package in `packages/relay-signature`. The relay requires it through a Composer path repository, and CI runs its tests separately.
 
-- Parses `X-Relay-Signature` and accepts the request if any `v1` signature matches (there are two during a secret rotation).
-- Rejects requests with timestamps outside a tolerance window, which blocks replays.
-- Compares signatures with `hash_equals`.
+- **`Signer`.** The relay uses it to build `X-Relay-Signature`.
+- **`Verifier`** (framework-free):
+    - Parses `t=…,v1=…`, rejecting oversized or malformed headers.
+    - Rejects timestamps more than the tolerance (300 seconds by default) from the receiver's clock, in either direction. This blocks replayed captures, and it's checked before any HMAC work.
+    - Compares with `hash_equals`. It passes if **any** `v1` matches **any** of the receiver's secrets, so both the relay and the receiver can rotate without downtime.
+    - Ignores unknown schemes, so a future `v2` can ship alongside `v1`.
+    - Throws specific exceptions (`MissingSignature`, `MalformedSignature`, `TimestampOutsideTolerance`, `SignatureMismatch`).
+- **`VerifyRelaySignature` middleware** (`relay.signature`, auto-discovered):
+    - Verifies the raw body.
+    - Answers 400 for a missing or malformed header and 401 for a mismatch or a stale timestamp, with the same generic message either way.
+    - Fails loudly (500) if no secret is configured.
+    - Secrets come from `RELAY_WEBHOOK_SECRET`, comma-separated, or from any config key passed as a middleware parameter.
+- **Deduplication** is left to the receiving app (a unique index on the event `id`), not the middleware. A cache-based "seen" check would drop a legitimate retry when the handler fails after marking the event.
 
-The transaction-categorizer project consumes it.
+**Consumer: transaction-categorizer.**
+
+- `POST /api/webhooks/relay` (stateless, `relay.signature`) records each delivery in `webhook_receipts`, unique on `event_id`. A redelivery answers `200 {"duplicate": true}` without a second row.
+- A Webhooks page lists the receipts.
+- Verified live end to end:
+    - a delivery
+    - a relay-side secret rotation (the receiver still holds only the old secret)
+    - a replayed redelivery, deduplicated
+    - a wrong receiver secret (401, then a retry that succeeds once the secret is fixed)
+
+**Distribution caveat.** A Composer path repository only works on a machine that has both checkouts side by side. A VCS repository needs `composer.json` at the repo root, so the package can't be installed straight from this repo's `packages/` folder. Before another repo can depend on it from GitHub, it needs its own repo: a read-only split of `packages/relay-signature`, kept in sync by CI.
 
 ## Observability
 

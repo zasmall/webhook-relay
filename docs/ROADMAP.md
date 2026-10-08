@@ -51,8 +51,9 @@
 
 ## M7 — Receiver verification
 
-- [ ] `VerifyRelaySignature` middleware/package with timestamp tolerance
-- [ ] Wire into the transaction-categorizer as a consumer
+- [x] `VerifyRelaySignature` middleware/package with timestamp tolerance
+- [x] Wire into the transaction-categorizer as a consumer (local path repository)
+- [ ] Publish `relay-signature` from its own repo (split of `packages/relay-signature`) so other repos can install it from GitHub
 
 ## M8 — Portfolio polish
 
