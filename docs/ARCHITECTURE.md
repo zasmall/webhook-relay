@@ -242,7 +242,23 @@ The 95% and 50% cut-offs live in `relay.health`.
 
 **Guard rails.** `Model::shouldBeStrict()` is on outside production. N+1 lazy loading, attributes silently dropped by mass assignment, and reads of unselected columns all throw in development and tests. Turning it on immediately exposed a test whose setup had been silently discarded.
 
-**Indexes.** `deliveries.created_at` (date filter) and `delivery_attempts.created_at` (window stats) were added for the dashboard. The log's query plans still need checking against realistic volume; the dev database is too small for `EXPLAIN` to mean anything (see M8).
+**Query plans at volume.** Checked with `EXPLAIN ANALYZE` after `php artisan relay:demo --volume=100000` (about 100k deliveries spread over 90 days):
+
+| Query                               | Plan                                                             | Time                |
+| ----------------------------------- | ---------------------------------------------------------------- | ------------------- |
+| Log, no filter                      | PK walked backwards, stops after 51 rows                         | 0.08 ms             |
+| Log, status / endpoint / event type | PK backwards + filter, or `(endpoint_id, status)` when selective | 0.2–1.2 ms          |
+| Log, date range                     | PK **range** scan (below)                                        | 0.15 ms (was 20 ms) |
+| Endpoint stats: backlog             | Covering range scan on `(endpoint_id, status)`                   | 8.5 ms              |
+| Endpoint stats: 24h attempts        | Range on `delivery_attempts.created_at` → PK join                | 0.7 ms              |
+| Dashboard: dead in 24h              | `(status, …)` lookup, filter on `updated_at`                     | 10.8 ms             |
+| Sweep: due pending                  | Covering range on `(status, next_attempt_at)`                    | <0.01 ms            |
+
+**ULID date ranges.** "Newest first, limit 51" makes MySQL walk the primary key backwards, which is ideal until a filter matches only old rows: it then reads every newer row first. Delivery ids are ULIDs, whose first 10 characters encode their creation time. So the log turns a date range into a primary-key range (`DeliveryLogQuery::ulidBound`), keeping `created_at` for exact edges.
+
+This relies on id time matching `created_at`. `Delivery::newUniqueId()` and `CreateDeliveries` both generate ids from `now()`, which also keeps test time travel consistent, and a test enforces it. The `deliveries.created_at` index added in M6 then had no readers and was dropped.
+
+**What grows.** The backlog and "dead in 24h" queries scale with the number of dead deliveries, which are never pruned. A retention job (archive or delete old succeeded and dead deliveries and their attempts) is the fix; see "What I'd do next" in the README.
 
 ## Non-goals
 
