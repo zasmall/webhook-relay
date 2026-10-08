@@ -182,7 +182,47 @@ The transaction-categorizer project consumes it.
 ## Observability
 
 - Horizon runs separate supervisors for `fanout` and `deliveries`.
-- The dashboard shows endpoint health, a filterable delivery log, and attempt detail (request headers, response code and body, timing).
+- Dashboard pages poll every 5 seconds with Inertia's `usePoll`, which pauses while the tab is hidden. Each poll reloads only the props that change.
+
+**Overview** (`/dashboard`): counts over `relay.health.window_hours` (24h):
+
+- events received
+- delivered (2xx attempts)
+- failed attempts
+- dead-lettered deliveries
+- current pending backlog
+
+It also has a **Needs attention** list: failing endpoints first, then disabled ones.
+
+**Endpoint health.** `EndpointStatsQuery` computes pending and dead counts, attempts and 2xx attempts in the window, and the last attempt time, for any number of endpoints in two grouped queries. `EndpointHealth::classify()` is pure and unit tested, and turns those stats into one label:
+
+| Health   | When                                                                     |
+| -------- | ------------------------------------------------------------------------ |
+| Disabled | `is_active` is false                                                     |
+| Failing  | consecutive failures ≥ half the breaker threshold, or success rate < 50% |
+| Degraded | any consecutive failures, or success rate < 95%                          |
+| Healthy  | otherwise, with attempts in the window                                   |
+| Idle     | no attempts in the window                                                |
+
+The 95% and 50% cut-offs live in `relay.health`.
+
+**Delivery log** (`/deliveries`), served by `DeliveryLogQuery`:
+
+- Newest first, with cursor pagination. ULIDs sort by creation time, so deep pages cost the same as the first.
+- Filters are kept in the query string so a view can be bookmarked: status, endpoint, event type (exact, `prefix.*` or `*`), and an inclusive date range.
+- The prefix filter escapes `LIKE` wildcards, because `_` is legal in event types.
+- Dead rows can be selected and replayed. A selection may span endpoints: it's grouped by endpoint, and groups whose endpoint is disabled or deleted are skipped and reported (`ReplaySelectedDeliveries`).
+
+**Delivery detail** (`/deliveries/{id}`):
+
+- The event, its endpoint, the next attempt time and its replay history.
+- The pretty-printed payload. It's shown only to logged-in operators and is never logged.
+- An expandable timeline of every attempt, with status or error, duration, request headers and the truncated response body.
+- A Replay button when the delivery is dead.
+
+**Guard rails.** `Model::shouldBeStrict()` is on outside production. N+1 lazy loading, attributes silently dropped by mass assignment, and reads of unselected columns all throw in development and tests. Turning it on immediately exposed a test whose setup had been silently discarded.
+
+**Indexes.** `deliveries.created_at` (date filter) and `delivery_attempts.created_at` (window stats) were added for the dashboard. The log's query plans still need checking against realistic volume; the dev database is too small for `EXPLAIN` to mean anything (see M8).
 
 ## Non-goals
 

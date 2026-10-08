@@ -44,9 +44,10 @@
 
 ## M6 — Dashboard
 
-- [ ] Endpoint list with health indicators
-- [ ] Delivery log with filters (status, endpoint, event type, date)
-- [ ] Attempt detail view, replay buttons (single and selected, via the M5 API/action)
+- [x] Endpoint list with health indicators
+- [x] Delivery log with filters (status, endpoint, event type, date)
+- [x] Attempt detail view, replay buttons (single and selected, via the M5 API/action)
+- [x] Overview page (24h counts, endpoints needing attention) and 5s polling
 
 ## M7 — Receiver verification
 
@@ -57,4 +58,5 @@
 
 - [ ] README: problem, architecture diagram, key decisions and tradeoffs, how to run, "what I'd do next"
 - [ ] Demo seeder plus a flaky mock receiver to show retries live
+- [ ] Re-check delivery log and stats query plans (`EXPLAIN`) against seeded volume
 - [ ] Screenshots / short GIF of the dashboard
