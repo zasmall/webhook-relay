@@ -6,6 +6,7 @@ use App\Jobs\DeliverWebhook;
 use App\Support\RetrySchedule;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\DevCommands;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,10 @@ class AppServiceProvider extends ServiceProvider
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
+
+        // Outside production, fail loudly on N+1 lazy loading, on attributes
+        // silently dropped by mass assignment, and on reading unselected columns.
+        Model::shouldBeStrict(! app()->isProduction());
 
         DB::prohibitDestructiveCommands(
             app()->isProduction(),

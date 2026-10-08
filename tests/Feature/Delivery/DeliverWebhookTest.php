@@ -93,7 +93,7 @@ it('signs with both secrets during a rotation grace window', function () {
 
 it('marks a 2xx as succeeded and records the attempt', function () {
     Http::fake(['*' => Http::response('{"received":true}', 202)]);
-    $this->endpoint->update(['consecutive_failures' => 3]);
+    $this->endpoint->forceFill(['consecutive_failures' => 3])->save();
     $this->freezeSecond();
 
     deliver($this->delivery);
