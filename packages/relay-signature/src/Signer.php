@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Support;
+namespace Zasmall\RelaySignature;
 
 /**
  * Builds the X-Relay-Signature header value:
@@ -10,9 +10,12 @@ namespace App\Support;
  *     t=<unix>,v1=<hex HMAC-SHA256 of "{t}.{body}">[,v1=...]
  *
  * One v1 per secret, so receivers keep verifying through a secret rotation.
+ * "v1" fixes the algorithm; a new algorithm would be a new scheme (v2).
  */
-final class WebhookSigner
+final class Signer
 {
+    public const HEADER = 'X-Relay-Signature';
+
     /**
      * @param  non-empty-list<string>  $secrets
      */
