@@ -8,11 +8,17 @@ import { Badge } from '@/components/ui/badge';
 import RelativeTime from '@/components/RelativeTime.vue';
 import { Button } from '@/components/ui/button';
 import { percent } from '@/lib/format';
-import type { Endpoint } from '@/types';
+import type { Endpoint, EndpointDisabledReason } from '@/types';
 
 defineProps<{ endpoints: Endpoint[] }>();
 
 usePoll(5000, { only: ['endpoints'] });
+
+const disabledReasons: Record<EndpointDisabledReason, string> = {
+    manual: 'Turned off by an operator',
+    circuit_breaker: 'Circuit breaker tripped',
+    gone: 'Receiver answered 410 Gone',
+};
 
 defineOptions({
     layout: {
@@ -102,7 +108,16 @@ defineOptions({
                                 :health="endpoint.health"
                             />
                             <p
-                                v-if="endpoint.consecutive_failures > 0"
+                                v-if="
+                                    !endpoint.is_active &&
+                                    endpoint.disabled_reason
+                                "
+                                class="text-xs text-muted-foreground"
+                            >
+                                {{ disabledReasons[endpoint.disabled_reason] }}
+                            </p>
+                            <p
+                                v-else-if="endpoint.consecutive_failures > 0"
                                 class="text-xs text-muted-foreground"
                             >
                                 {{ endpoint.consecutive_failures }} failures in
