@@ -43,8 +43,10 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('deliveries', fn (DeliverWebhook $job): Limit => Limit::perMinute(config()->integer('relay.rate_limit.per_minute'))
             ->by('endpoint:'.$job->endpointId));
 
-        // Run the scheduler (relay:sweep) alongside `composer dev`.
+        // Run the scheduler (relay:sweep) alongside `composer dev`, plus the
+        // demo endpoints' mock receiver.
         DevCommands::artisan('schedule:work', 'scheduler');
+        DevCommands::register('PHP_CLI_SERVER_WORKERS=8 php -S 127.0.0.1:9000 tools/mock-receiver/index.php', 'mock-receiver');
     }
 
     /**

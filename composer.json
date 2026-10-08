@@ -96,6 +96,10 @@
         ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
+        ],
+        "mock-receiver": [
+            "Composer\\Config::disableProcessTimeout",
+            "PHP_CLI_SERVER_WORKERS=8 php -S 127.0.0.1:9000 tools/mock-receiver/index.php"
         ]
     },
     "extra": {
@@ -117,12 +121,14 @@
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
-    "repositories": [{
-        "name": "relay-signature",
-        "type": "path",
-        "url": "packages/relay-signature",
-        "options": {
-            "symlink": true
+    "repositories": [
+        {
+            "name": "relay-signature",
+            "type": "path",
+            "url": "packages/relay-signature",
+            "options": {
+                "symlink": true
+            }
         }
-    }]
+    ]
 }
