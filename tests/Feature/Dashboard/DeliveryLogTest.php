@@ -2,12 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Actions\CreateDeliveries;
 use App\Enums\DeliveryStatus;
 use App\Models\Delivery;
 use App\Models\Endpoint;
 use App\Models\Event;
 use App\Models\User;
+use App\Queries\DeliveryLogQuery;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
+use Symfony\Component\Uid\Ulid;
 
 beforeEach(function () {
     $this->actingAs(User::factory()->create());
@@ -129,4 +134,27 @@ it('renders many rows without lazy loading', function () {
     Delivery::factory()->count(5)->create();
 
     $this->get(route('deliveries.index'))->assertOk();
+});
+
+it('gives deliveries ids whose time matches created_at', function () {
+    $this->travelTo('2026-03-14 15:09:26');
+    Endpoint::factory()->create();
+    $event = Event::factory()->create();
+    app(CreateDeliveries::class)->handle($event);
+    $factoryMade = Delivery::factory()->create();
+
+    foreach ([Delivery::where('event_id', $event->id)->sole(), $factoryMade] as $delivery) {
+        $idTime = Ulid::fromString(strtoupper($delivery->id))->getDateTime();
+
+        expect($idTime->format('Y-m-d H:i:s'))->toBe($delivery->created_at->format('Y-m-d H:i:s'));
+    }
+});
+
+it('brackets every ULID of a second between its bounds', function () {
+    $at = CarbonImmutable::parse('2026-10-08 12:34:56');
+    $first = strtolower((string) Str::ulid($at->startOfSecond()));
+    $last = strtolower((string) Str::ulid($at->endOfSecond()));
+
+    expect(DeliveryLogQuery::ulidBound($at, '0'))->toBeLessThanOrEqual($first)
+        ->and(DeliveryLogQuery::ulidBound($at, 'z'))->toBeGreaterThanOrEqual($last);
 });

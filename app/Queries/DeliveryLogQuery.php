@@ -7,8 +7,10 @@ namespace App\Queries;
 use App\Data\DeliveryLogFilters;
 use App\Models\Delivery;
 use App\Support\EventTypePattern;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 /**
  * The filtered, newest-first delivery log. Cursor pagination keeps deep pages
@@ -36,12 +38,32 @@ final class DeliveryLogQuery
         return Delivery::query()
             ->when($filters->status, fn (Builder $query, $status) => $query->where('status', $status))
             ->when($filters->endpointId, fn (Builder $query, string $id) => $query->where('endpoint_id', $id))
-            ->when($filters->from, fn (Builder $query, $from) => $query->where('created_at', '>=', $from->startOfDay()))
-            ->when($filters->to, fn (Builder $query, $to) => $query->where('created_at', '<=', $to->endOfDay()))
+            // ULIDs start with their creation time, so a date range is also a
+            // primary-key range: MySQL range-scans the PK instead of walking it
+            // backwards from the newest row. created_at keeps the edges exact.
+            ->when($filters->from, fn (Builder $query, $from) => $query
+                ->where('id', '>=', self::ulidBound($from->startOfDay(), '0'))
+                ->where('created_at', '>=', $from->startOfDay()))
+            ->when($filters->to, fn (Builder $query, $to) => $query
+                ->where('id', '<=', self::ulidBound($to->endOfDay(), 'z'))
+                ->where('created_at', '<=', $to->endOfDay()))
             ->when(
                 $filters->eventType !== null && $filters->eventType !== EventTypePattern::WILDCARD,
                 fn (Builder $query) => $query->whereIn('event_id', fn ($events) => $this->eventsOfType($events, (string) $filters->eventType)),
             );
+    }
+
+    /**
+     * The smallest ("0") or largest ("z") lowercase ULID for an instant: its
+     * 10-character timestamp followed by 16 copies of the fill character.
+     * A second's ULIDs span its whole millisecond range, so the upper bound
+     * uses the last millisecond.
+     */
+    public static function ulidBound(CarbonInterface $at, string $fill): string
+    {
+        $time = $fill === 'z' ? $at->endOfSecond() : $at->startOfSecond();
+
+        return substr(strtolower((string) Str::ulid($time)), 0, 10).str_repeat($fill, 16);
     }
 
     /**

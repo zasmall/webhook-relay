@@ -34,7 +34,8 @@ final class CreateDeliveries
                 $now = now();
 
                 Delivery::insertOrIgnore($endpoints->map(fn (Endpoint $endpoint): array => [
-                    'id' => strtolower((string) Str::ulid()),
+                    // Same id scheme as Delivery::newUniqueId(): time from now().
+                    'id' => strtolower((string) Str::ulid($now)),
                     'event_id' => $event->id,
                     'endpoint_id' => $endpoint->id,
                     'status' => DeliveryStatus::Pending->value,

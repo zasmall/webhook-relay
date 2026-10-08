@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * One event sent to one endpoint, across all of its attempts.
@@ -46,6 +47,16 @@ final class Delivery extends Model
         'attempts' => 0,
         'replay_count' => 0,
     ];
+
+    /**
+     * Ids encode their creation time from now() (not the system clock), so a
+     * delivery's id time always matches created_at. The delivery log relies on
+     * that to turn date filters into primary-key ranges.
+     */
+    public function newUniqueId(): string
+    {
+        return strtolower((string) Str::ulid(now()));
+    }
 
     /**
      * @return BelongsTo<Event, $this>
