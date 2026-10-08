@@ -161,7 +161,7 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // No public sign-up: operators are created with `php artisan relay:user:create`.
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([
