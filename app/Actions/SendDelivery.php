@@ -11,11 +11,11 @@ use App\Models\Delivery;
 use App\Models\Endpoint;
 use App\Models\Event;
 use App\Support\OutboundAddressGuard;
-use App\Support\WebhookSigner;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Zasmall\RelaySignature\Signer;
 
 final class SendDelivery
 {
@@ -128,7 +128,7 @@ final class SendDelivery
             'X-Relay-Event-Id' => $delivery->event_id,
             'X-Relay-Event-Type' => $delivery->event->type,
             'X-Relay-Delivery-Id' => $delivery->id,
-            config()->string('relay.signing.header') => WebhookSigner::header($body, $secrets, now()->getTimestamp()),
+            Signer::HEADER => Signer::header($body, $secrets, now()->getTimestamp()),
         ];
     }
 

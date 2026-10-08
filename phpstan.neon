@@ -9,5 +9,6 @@ parameters:
         - config/
         - database/
         - routes/
+        - packages/relay-signature/src/
 
     level: 7

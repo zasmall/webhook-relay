@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d4d3bb5a450dcb23d8eb74c8ef4ea188",
+    "content-hash": "407b1e90907e05177b7df005ecbec680",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -8056,6 +8056,59 @@
                 "source": "https://github.com/webmozarts/assert/tree/2.5.0"
             },
             "time": "2026-10-05T23:14:19+00:00"
+        },
+        {
+            "name": "zasmall/relay-signature",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "packages/relay-signature",
+                "reference": "763a94e92075933c0f1b0b4a1b2542c80f71879d"
+            },
+            "require": {
+                "php": "^8.3"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^11.0",
+                "pestphp/pest": "^5.3",
+                "pestphp/pest-plugin-laravel": "^5.0"
+            },
+            "suggest": {
+                "illuminate/http": "Required for the VerifyRelaySignature middleware (^13.0)."
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Zasmall\\RelaySignature\\Laravel\\RelaySignatureServiceProvider"
+                    ],
+                    "aliases": []
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Zasmall\\RelaySignature\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Zasmall\\RelaySignature\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Sign and verify Webhook Relay signatures (X-Relay-Signature), with Laravel middleware for receivers.",
+            "keywords": [
+                "hmac",
+                "laravel",
+                "signature",
+                "webhooks"
+            ],
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
         }
     ],
     "packages-dev": [
@@ -11607,7 +11660,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "zasmall/relay-signature": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

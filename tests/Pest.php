@@ -3,6 +3,8 @@
 use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Zasmall\RelaySignature\Exceptions\InvalidSignature;
+use Zasmall\RelaySignature\Verifier;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,31 +51,16 @@ pest()->extend(TestCase::class)
 */
 
 /**
- * Verifies an X-Relay-Signature header the way a receiver would: any v1 that
- * matches HMAC-SHA256("{t}.{body}") with the secret passes.
+ * Verifies an X-Relay-Signature header exactly as a receiver would, using the
+ * relay-signature package's Verifier.
  */
 function signatureVerifies(string $header, string $body, string $secret): bool
 {
-    $timestamp = null;
-    $signatures = [];
+    try {
+        Verifier::verify($header, $body, [$secret], now()->getTimestamp());
 
-    foreach (explode(',', $header) as $part) {
-        [$key, $value] = array_pad(explode('=', $part, 2), 2, '');
-
-        if ($key === 't') {
-            $timestamp = $value;
-        } elseif ($key === 'v1') {
-            $signatures[] = $value;
-        }
+        return true;
+    } catch (InvalidSignature) {
+        return false;
     }
-
-    $expected = hash_hmac('sha256', "{$timestamp}.{$body}", $secret);
-
-    foreach ($signatures as $signature) {
-        if (hash_equals($expected, $signature)) {
-            return true;
-        }
-    }
-
-    return false;
 }

@@ -72,3 +72,9 @@ jobs:
 
       - name: Run CI Checks
         run: composer ci:check
+
+      - name: Test relay-signature package
+        working-directory: packages/relay-signature
+        run: |
+          composer install --no-interaction --no-progress
+          vendor/bin/pest
