@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "407b1e90907e05177b7df005ecbec680",
+    "content-hash": "f7cc3a52cb2006bba8ffb773926795e4",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -8058,12 +8058,12 @@
             "time": "2026-10-05T23:14:19+00:00"
         },
         {
-            "name": "zasmall/relay-signature",
+            "name": "zasmall/webhook-relay-signature",
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "packages/relay-signature",
-                "reference": "763a94e92075933c0f1b0b4a1b2542c80f71879d"
+                "url": "packages/webhook-relay-signature",
+                "reference": "66ad7970709e3342ac380417083e978f35b51c76"
             },
             "require": {
                 "php": "^8.3"
@@ -11661,7 +11661,7 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "zasmall/relay-signature": 20
+        "zasmall/webhook-relay-signature": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,

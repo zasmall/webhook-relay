@@ -171,7 +171,7 @@ Dashboard: the endpoint page shows the dead count with a **Replay all** button. 
 
 ## Receiver verification
 
-The signing scheme lives in one place: the `zasmall/relay-signature` package in `packages/relay-signature`. The relay requires it through a Composer path repository, and CI runs its tests separately.
+The signing scheme lives in one place: the `zasmall/webhook-relay-signature` package in `packages/webhook-relay-signature`. The relay requires it through a Composer path repository, and CI runs its tests separately.
 
 - **`Signer`.** The relay uses it to build `X-Relay-Signature`.
 - **`Verifier`** (framework-free):
@@ -197,7 +197,11 @@ The signing scheme lives in one place: the `zasmall/relay-signature` package in 
     - a replayed redelivery, deduplicated
     - a wrong receiver secret (401, then a retry that succeeds once the secret is fixed)
 
-**Distribution caveat.** A Composer path repository only works on a machine that has both checkouts side by side. A VCS repository needs `composer.json` at the repo root, so the package can't be installed straight from this repo's `packages/` folder. Before another repo can depend on it from GitHub, it needs its own repo: a read-only split of `packages/relay-signature`, kept in sync by CI.
+**Distribution.** A Composer VCS repository needs `composer.json` at the repository root, so other projects can't install the package from this repo's `packages/` folder. Instead, `bin/split-webhook-relay-signature` uses `git subtree split` to extract just the package's history and publishes it to the read-only [zasmall/webhook-relay-signature](https://github.com/zasmall/webhook-relay-signature) repo. The relay keeps using the local path repository. Consumers add the GitHub repo as a VCS repository (it isn't on Packagist) and require `^0.1`.
+
+- The Composer package is `zasmall/webhook-relay-signature`.
+- The PHP namespace (`Zasmall\RelaySignature`), the middleware alias (`relay.signature`) and the config key (`relay-signature.*`) kept their original names, so receivers' code doesn't change.
+- Package versions are tagged locally as `webhook-relay-signature/vX.Y.Z`, so they never mix with the relay's own tags, and pushed to the package repo as plain `vX.Y.Z`.
 
 ## Observability
 

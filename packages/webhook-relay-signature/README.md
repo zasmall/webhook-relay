@@ -1,6 +1,17 @@
-# relay-signature
+# webhook-relay-signature
 
 Signs and verifies Webhook Relay's `X-Relay-Signature` header. It's used by the relay to sign deliveries, and by receivers (with the included Laravel middleware) to verify them.
+
+## Install
+
+This repository is a read-only split of `packages/webhook-relay-signature` in [zasmall/webhook-relay](https://github.com/zasmall/webhook-relay). It isn't on Packagist, so add it as a VCS repository:
+
+```bash
+composer config repositories.webhook-relay-signature vcs https://github.com/zasmall/webhook-relay-signature
+composer require zasmall/webhook-relay-signature:^0.1
+```
+
+The PHP namespace is `Zasmall\RelaySignature`.
 
 ## The scheme
 

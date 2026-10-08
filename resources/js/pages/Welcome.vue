@@ -205,7 +205,7 @@ HTTP/1.1 202 Accepted</code></pre>
                     <p class="mt-2 text-sm text-muted-foreground">
                         Every delivery is signed. Laravel receivers verify it
                         with one middleware from the
-                        <code class="font-mono">relay-signature</code>
+                        <code class="font-mono">webhook-relay-signature</code>
                         package.
                     </p>
                     <pre

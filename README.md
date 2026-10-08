@@ -20,7 +20,7 @@ An API-first Laravel service that accepts events from source apps and reliably d
     - A filterable, cursor-paginated delivery log.
     - The full attempt timeline, with request headers, response and timing.
     - Horizon for the queues.
-- **A receiver package.** [`packages/relay-signature`](packages/relay-signature) holds the signing scheme, a framework-free `Verifier`, and a Laravel middleware for receivers. The relay signs with it, and [transaction-categorizer](https://github.com/zasmall/Transaction-categorizer) verifies with it.
+- **A receiver package.** [`packages/webhook-relay-signature`](packages/webhook-relay-signature) (published as [zasmall/webhook-relay-signature](https://github.com/zasmall/webhook-relay-signature)) holds the signing scheme, a framework-free `Verifier`, and a Laravel middleware for receivers. The relay signs with it, and [transaction-categorizer](https://github.com/zasmall/Transaction-categorizer) verifies with it.
 
 ## How an event travels
 
@@ -117,7 +117,7 @@ Route::post('webhooks/relay', ReceiveRelayWebhook::class)->middleware('relay.sig
 
 ```bash
 composer ci:check     # frontend lint/format, vue-tsc, Pint, PHPStan (level 7), Pest
-cd packages/relay-signature && composer install && vendor/bin/pest
+cd packages/webhook-relay-signature && composer install && vendor/bin/pest
 ```
 
 The suite is about 290 tests against real MySQL; the package has its own 39. Some notable ones:
@@ -134,7 +134,7 @@ app/Jobs           FanOutEvent, DeliverWebhook (orchestration only)
 app/Queries        DeliveryLogQuery, EndpointStatsQuery, DashboardSummaryQuery
 app/Support        RetrySchedule, RetryAfter, EventTypePattern, OutboundAddressGuard
 config/relay.php   Every tunable: backoff, attempts, timeouts, breaker, rate limit, health thresholds
-packages/relay-signature   Signer, Verifier, VerifyRelaySignature middleware
+packages/webhook-relay-signature   Signer, Verifier, VerifyRelaySignature middleware
 tools/mock-receiver        Demo receiver
 docs/ARCHITECTURE.md       Design, data model, decisions, query plans
 ```
@@ -149,7 +149,6 @@ docs/ARCHITECTURE.md       Design, data model, decisions, query plans
 
 ## What I'd do next
 
-- **Publish `relay-signature` from its own repo** (a read-only split of `packages/relay-signature`), so receivers can install it from Packagist instead of a local path.
 - **Retention.** Archive or prune old succeeded and dead deliveries and their attempts. Dead rows are never pruned today, and the backlog and dead-in-24h queries grow with them.
 - **An egress proxy** (such as Smokescreen) for SSRF defense in depth, and so receivers can allowlist the relay's IPs.
 - **Tenancy.** Endpoints owned by teams, and per-source subscriptions instead of one global endpoint list.

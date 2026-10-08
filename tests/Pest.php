@@ -52,7 +52,7 @@ pest()->extend(TestCase::class)
 
 /**
  * Verifies an X-Relay-Signature header exactly as a receiver would, using the
- * relay-signature package's Verifier.
+ * webhook-relay-signature package's Verifier.
  */
 function signatureVerifies(string $header, string $body, string $secret): bool
 {

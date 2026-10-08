@@ -1,5 +1,5 @@
 {
-    "name": "zasmall/relay-signature",
+    "name": "zasmall/webhook-relay-signature",
     "description": "Sign and verify Webhook Relay signatures (X-Relay-Signature), with Laravel middleware for receivers.",
     "type": "library",
     "license": "MIT",

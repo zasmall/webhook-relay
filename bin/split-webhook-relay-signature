@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Publishes packages/webhook-relay-signature to its own repository, so other
+# projects can install it with Composer (a VCS repository needs composer.json
+# at the repository root, which this monorepo's root can't provide).
+#
+#   bin/split-webhook-relay-signature             # build the split branch only
+#   bin/split-webhook-relay-signature --push v0.1.1   # tag and publish
+#
+# The split branch contains only the package's history. The package repo is
+# read-only: change the package here, then re-run this to publish.
+set -euo pipefail
+
+PREFIX=packages/webhook-relay-signature
+BRANCH=split/webhook-relay-signature
+REMOTE=signature   # git remote add signature https://github.com/zasmall/webhook-relay-signature.git
+
+cd "$(git rev-parse --show-toplevel)"
+
+if [[ -n "$(git status --porcelain -- "$PREFIX")" ]]; then
+    echo "Commit your changes in $PREFIX first." >&2
+    exit 1
+fi
+
+SPLIT=$(git subtree split --prefix="$PREFIX" 2>/dev/null)
+git branch -f "$BRANCH" "$SPLIT"
+echo "Split branch $BRANCH is at $(git rev-parse --short "$BRANCH")."
+
+if [[ "${1:-}" == "--push" ]]; then
+    VERSION="${2:?Usage: $0 --push <version, e.g. v0.1.1>}"
+    # Prefixed locally so the package's versions never mix with the relay's
+    # own tags; pushed to the package repo under the plain version.
+    LOCAL_TAG="webhook-relay-signature/$VERSION"
+    git tag -a "$LOCAL_TAG" "$BRANCH" -m "webhook-relay-signature $VERSION"
+    git push "$REMOTE" "$BRANCH:refs/heads/main"
+    git push "$REMOTE" "refs/tags/$LOCAL_TAG:refs/tags/$VERSION"
+    echo "Published $VERSION to $REMOTE."
+fi

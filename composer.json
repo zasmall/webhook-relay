@@ -19,7 +19,7 @@
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14",
         "predis/predis": "^3.6",
-        "zasmall/relay-signature": "@dev"
+        "zasmall/webhook-relay-signature": "@dev"
     },
     "require-dev": {
         "fakerphp/faker": "^1.24",
@@ -123,9 +123,9 @@
     "prefer-stable": true,
     "repositories": [
         {
-            "name": "relay-signature",
+            "name": "webhook-relay-signature",
             "type": "path",
-            "url": "packages/relay-signature",
+            "url": "packages/webhook-relay-signature",
             "options": {
                 "symlink": true
             }

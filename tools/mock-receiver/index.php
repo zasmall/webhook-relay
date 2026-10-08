@@ -8,7 +8,7 @@ declare(strict_types=1);
  *     PHP_CLI_SERVER_WORKERS=8 php -S 127.0.0.1:9000 tools/mock-receiver/index.php
  *
  * (`composer dev` starts it.) It verifies X-Relay-Signature with the
- * relay-signature package, then behaves according to the path:
+ * webhook-relay-signature package, then behaves according to the path:
  *
  *     /ok                         200
  *     /flaky?fail=40              500 on 40% of requests, else 200
