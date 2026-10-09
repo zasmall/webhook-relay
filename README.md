@@ -22,8 +22,8 @@ An API-first Laravel service that accepts events from source apps and reliably d
     - A filterable, cursor-paginated delivery log.
     - The full attempt timeline, with request headers, response and timing.
     - Horizon for the queues.
-- **A receiver package.** [`packages/webhook-relay-signature`](packages/webhook-relay-signature) (published as [zasmall/webhook-relay-signature](https://github.com/zasmall/webhook-relay-signature)) holds the signing scheme, a framework-free `Verifier`, and a Laravel middleware for receivers. The relay signs with it, and [transaction-categorizer](https://github.com/zasmall/Transaction-categorizer) verifies with it.
-- **Used end to end.** [Transaction Categorizer](https://github.com/zasmall/Transaction-categorizer) publishes `transaction.categorized` through the relay to [Cashflow Insights](https://github.com/zasmall/cashflow-insights), a Python service that verifies these signatures independently and is pinned to this repo's signer by a test vector. Cashflow Insights' [end-to-end demo](https://github.com/zasmall/cashflow-insights/blob/main/docs/DEMO.md) runs all three, including the per-endpoint rate limit.
+- **A receiver package.** [`packages/webhook-relay-signature`](packages/webhook-relay-signature) (published as [zasmall/webhook-relay-signature](https://github.com/zasmall/webhook-relay-signature)) holds the signing scheme, a framework-free `Verifier`, and a Laravel middleware for receivers. The relay signs with it, and [transaction-categorizer](https://github.com/zasmall/transaction-categorizer) verifies with it.
+- **Used end to end.** [Transaction Categorizer](https://github.com/zasmall/transaction-categorizer) publishes `transaction.categorized` through the relay to [Cashflow Insights](https://github.com/zasmall/cashflow-insights), a Python service that verifies these signatures independently and is pinned to this repo's signer by a test vector. Cashflow Insights' [end-to-end demo](https://github.com/zasmall/cashflow-insights/blob/main/docs/DEMO.md) runs all three, including the per-endpoint rate limit.
 
 ## How an event travels
 
